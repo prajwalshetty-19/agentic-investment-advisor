@@ -32,6 +32,9 @@ ENV/
 *.sqlite
 *.sqlite3
 *.db
+*.db-shm
+*.db-wal
+data/*.db*
 data/vector_store/
 data/uploads/
 data/cache/
