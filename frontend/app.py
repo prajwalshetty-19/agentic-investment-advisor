@@ -9,6 +9,17 @@ from typing import Dict, Any, Optional
 
 from frontend.api_client import ApiClient
 
+
+def to_float(val: Any, default: float = 0.0) -> float:
+    """Safely converts string, Decimal, or number to float for formatting."""
+    if val is None:
+        return default
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return default
+
+
 st.set_page_config(
     page_title="Agentic AI Investment Advisor",
     page_icon="📈",
@@ -116,7 +127,7 @@ with st.sidebar:
     st.markdown(
         f"<div style='background: rgba(59, 130, 246, 0.15); padding: 10px; border-radius: 8px; border-left: 4px solid #3B82F6; margin-bottom: 15px;'>"
         f"<strong>User:</strong> {current_user['username']}<br>"
-        f"<strong>Virtual Balance:</strong> ₹{wallet_info['balance']:,.2f}<br>"
+        f"<strong>Virtual Balance:</strong> ₹{to_float(wallet_info['balance']):,.2f}<br>"
         f"<strong>AI Execution:</strong> {'🟢 Enabled' if current_user['settings']['ai_execution_enabled'] else '🔴 Disabled'}"
         f"</div>",
         unsafe_allow_html=True
@@ -189,7 +200,7 @@ if current_page == "Dashboard":
         st.markdown(
             f"<div class='kpi-card'>"
             f"<div class='kpi-label'>Total Net Worth</div>"
-            f"<div class='kpi-value'>₹{portfolio['total_net_worth']:,.2f}</div>"
+            f"<div class='kpi-value'>₹{to_float(portfolio['total_net_worth']):,.2f}</div>"
             f"<div class='kpi-subtext neutral-val'>Holdings + Cash</div>"
             f"</div>",
             unsafe_allow_html=True
@@ -198,7 +209,7 @@ if current_page == "Dashboard":
         st.markdown(
             f"<div class='kpi-card'>"
             f"<div class='kpi-label'>Simulated Holdings Value</div>"
-            f"<div class='kpi-value'>₹{portfolio['total_portfolio_value']:,.2f}</div>"
+            f"<div class='kpi-value'>₹{to_float(portfolio['total_portfolio_value']):,.2f}</div>"
             f"<div class='kpi-subtext neutral-val'>{len(portfolio['holdings'])} Active Positions</div>"
             f"</div>",
             unsafe_allow_html=True
@@ -207,14 +218,14 @@ if current_page == "Dashboard":
         st.markdown(
             f"<div class='kpi-card'>"
             f"<div class='kpi-label'>Available Virtual Cash</div>"
-            f"<div class='kpi-value'>₹{portfolio['virtual_wallet_balance']:,.2f}</div>"
+            f"<div class='kpi-value'>₹{to_float(portfolio['virtual_wallet_balance']):,.2f}</div>"
             f"<div class='kpi-subtext neutral-val'>Ready to allocate</div>"
             f"</div>",
             unsafe_allow_html=True
         )
     with kpi4:
-        pnl = portfolio['total_unrealized_pnl']
-        pnl_pct = portfolio['total_unrealized_pnl_percent']
+        pnl = to_float(portfolio['total_unrealized_pnl'])
+        pnl_pct = to_float(portfolio['total_unrealized_pnl_percent'])
         cls = "positive-val" if pnl >= 0 else "negative-val"
         st.markdown(
             f"<div class='kpi-card'>"
@@ -336,7 +347,7 @@ elif current_page == "AI Investment Chat":
                     st.markdown(
                         f"<div class='kpi-card' style='border-left: 4px solid #10B981;'>"
                         f"<h4>{proposed['side']} {proposed['quantity']} {proposed['name']} ({proposed['symbol']})</h4>"
-                        f"<strong>Price:</strong> ₹{proposed['price']:,.2f} | <strong>Total Cost:</strong> ₹{proposed['total_amount']:,.2f} (Est. Fee: ₹{proposed['estimated_fee']:,.2f})<br>"
+                        f"<strong>Price:</strong> ₹{to_float(proposed['price']):,.2f} | <strong>Total Cost:</strong> ₹{to_float(proposed['total_amount']):,.2f} (Est. Fee: ₹{to_float(proposed['estimated_fee']):,.2f})<br>"
                         f"<em>{proposed['note']}</em>"
                         f"</div>",
                         unsafe_allow_html=True
@@ -433,7 +444,7 @@ elif current_page == "Virtual Wallet":
         st.markdown(
             f"<div class='kpi-card'>"
             f"<div class='kpi-label'>Available Virtual Balance</div>"
-            f"<div class='kpi-value'>₹{w['balance']:,.2f}</div>"
+            f"<div class='kpi-value'>₹{to_float(w['balance']):,.2f}</div>"
             f"<div class='kpi-subtext neutral-val'>Currency: {w['currency']} (100% Simulated)</div>"
             f"</div>",
             unsafe_allow_html=True
@@ -465,9 +476,9 @@ elif current_page == "Portfolio Holdings":
     port = api.get_portfolio()
 
     st.markdown(
-        f"**Total Portfolio Value:** ₹{port['total_portfolio_value']:,.2f} | "
-        f"**Total Invested:** ₹{port['total_invested']:,.2f} | "
-        f"**Unrealized P&L:** ₹{port['total_unrealized_pnl']:+,.2f} ({port['total_unrealized_pnl_percent']:+.2f}%)"
+        f"**Total Portfolio Value:** ₹{to_float(port['total_portfolio_value']):,.2f} | "
+        f"**Total Invested:** ₹{to_float(port['total_invested']):,.2f} | "
+        f"**Unrealized P&L:** ₹{to_float(port['total_unrealized_pnl']):+,.2f} ({to_float(port['total_unrealized_pnl_percent']):+.2f}%)"
     )
 
     holdings = port.get("holdings", [])
@@ -549,7 +560,7 @@ elif current_page == "Order Confirmation":
                 )
                 # 2. Trigger paper-trading execution
                 exec_res = api.execute_order(order_id)
-                st.success(f"🎉 Trade Executed! Trade ID: #{exec_res.get('trade_id')}. Remaining Balance: ₹{exec_res['remaining_wallet_balance']:,.2f}")
+                st.success(f"🎉 Trade Executed! Trade ID: #{exec_res.get('trade_id')}. Remaining Balance: ₹{to_float(exec_res['remaining_wallet_balance']):,.2f}")
                 st.session_state["active_order"] = None
                 if st.button("View Portfolio"):
                     st.session_state["page"] = "Portfolio Holdings"
