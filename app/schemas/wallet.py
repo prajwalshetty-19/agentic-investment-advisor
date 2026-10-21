@@ -11,7 +11,7 @@ class WalletResponse(BaseModel):
 
     id: int
     user_id: int
-    balance: Decimal
+    balance: float
     currency: str
     updated_at: datetime
 
@@ -23,8 +23,8 @@ class LedgerEntryResponse(BaseModel):
     wallet_id: int
     order_id: Optional[int] = None
     transaction_type: str
-    amount: Decimal
-    balance_after: Decimal
+    amount: float
+    balance_after: float
     description: str
     created_at: datetime
 

@@ -242,12 +242,12 @@ if current_page == "Dashboard":
     with c1:
         st.subheader("Asset Allocation Breakdown")
         allocation = portfolio.get("asset_allocation", {})
-        if allocation and sum(allocation.values()) > 0:
+        alloc_values = [to_float(v) for v in allocation.values()]
+        if allocation and sum(alloc_values) > 0:
             labels = list(allocation.keys())
-            values = [float(v) for v in allocation.values()]
             fig = px.pie(
                 names=labels,
-                values=values,
+                values=alloc_values,
                 hole=0.55,
                 color_discrete_sequence=px.colors.qualitative.Plotly
             )
@@ -484,6 +484,9 @@ elif current_page == "Portfolio Holdings":
     holdings = port.get("holdings", [])
     if holdings:
         df = pd.DataFrame(holdings)
+        for num_col in ["quantity", "average_buy_price", "current_price", "current_value", "unrealized_pnl", "weight_percent"]:
+            if num_col in df.columns:
+                df[num_col] = pd.to_numeric(df[num_col], errors="coerce")
         st.dataframe(
             df[["symbol", "name", "category", "quantity", "average_buy_price", "current_price", "current_value", "unrealized_pnl", "weight_percent"]],
             use_container_width=True,

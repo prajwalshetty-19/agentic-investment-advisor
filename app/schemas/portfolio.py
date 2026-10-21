@@ -3,31 +3,35 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class HoldingDetail(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     holding_id: int
     asset_id: int
     symbol: str
     name: str
     category: str
-    quantity: Decimal
-    average_buy_price: Decimal
-    total_invested: Decimal
-    current_price: Decimal
-    current_value: Decimal
-    unrealized_pnl: Decimal
-    unrealized_pnl_percent: Decimal
-    weight_percent: Decimal
+    quantity: float
+    average_buy_price: float
+    total_invested: float
+    current_price: float
+    current_value: float
+    unrealized_pnl: float
+    unrealized_pnl_percent: float
+    weight_percent: float
 
 
 class PortfolioSummaryResponse(BaseModel):
-    total_portfolio_value: Decimal
-    total_invested: Decimal
-    total_unrealized_pnl: Decimal
-    total_unrealized_pnl_percent: Decimal
-    virtual_wallet_balance: Decimal
-    total_net_worth: Decimal
-    asset_allocation: Dict[str, Decimal]  # e.g., {"STOCK": 45.0, "MUTUAL_FUND": 30.0, "GOLD": 25.0}
+    model_config = ConfigDict(from_attributes=True)
+
+    total_portfolio_value: float
+    total_invested: float
+    total_unrealized_pnl: float
+    total_unrealized_pnl_percent: float
+    virtual_wallet_balance: float
+    total_net_worth: float
+    asset_allocation: Dict[str, float]  # e.g., {"STOCK": 45.0, "MUTUAL_FUND": 30.0, "GOLD": 25.0}
     holdings: List[HoldingDetail]
