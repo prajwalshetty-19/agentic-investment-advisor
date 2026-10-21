@@ -11,6 +11,7 @@ from app.api.asset_routes import router as asset_router
 from app.api.order_routes import router as order_router
 from app.api.portfolio_routes import router as portfolio_router
 from app.api.settings_routes import router as settings_router
+from app.api.agent_routes import router as agent_router
 
 settings = get_settings()
 
@@ -45,6 +46,7 @@ app.include_router(asset_router)
 app.include_router(order_router)
 app.include_router(portfolio_router)
 app.include_router(settings_router)
+app.include_router(agent_router)
 
 
 @app.get("/")
