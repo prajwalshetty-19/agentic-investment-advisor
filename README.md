@@ -28,8 +28,10 @@ An enterprise-grade, multi-agent AI-powered virtual investment platform and port
   - **Fixed Deposits (FDs)**: Compounding schedules, tenure selection, deterministic maturity calculation.
   - **Recurring Deposits (RDs)**: Monthly simulated debits, compound interest formulas, missed deposit handling.
 
-- **Zero-Risk Virtual Wallet & Double-Gate Authorization**:
-  - ₹100,000 initial virtual balance.
+- **Zero-Risk Simulated Wallet & Double-Gate Authorization**:
+  - ₹0 initial default balance upon registration.
+  - Realistic simulated funding via **UPI (Simulation)** with preset amounts and custom VPAs.
+  - Full **Buy and Sell** workflows with partial sales and realized P&L tracking.
   - Strict append-only transaction ledger with atomic database transactions.
   - **Gate 1**: Account-level AI toggle (`ai_execution_enabled`). If disabled, all agent-assisted orders are blocked.
   - **Gate 2**: Explicit, immutable order-level confirmation. Any price/quantity modification invalidates previous approval.
