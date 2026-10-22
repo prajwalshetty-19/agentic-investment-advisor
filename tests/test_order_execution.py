@@ -111,6 +111,22 @@ def test_successful_buy_and_sell_order_execution(db_session, test_user, test_ass
     # Holding reduced to 6 units
     db_session.refresh(holding)
     assert holding.quantity == Decimal("6.0000")
+    assert holding.average_buy_price == Decimal("2500.00")
+    assert sell_trade.realized_pnl is not None
+
+    # 4. Sell remaining 6 units (Complete position closure)
+    sell_all = propose_order(
+        db=db_session,
+        user_id=test_user.id,
+        asset_id=test_asset.id,
+        side="SELL",
+        quantity=Decimal("6.0000")
+    )
+    approve_or_reject_order(db=db_session, user_id=test_user.id, order_id=sell_all.id, action="APPROVE")
+    final_trade, _ = execute_approved_order(db=db_session, user_id=test_user.id, order_id=sell_all.id)
+    db_session.refresh(holding)
+    assert holding.quantity == Decimal("0.0000")
+    assert holding.total_invested == Decimal("0.0000")
 
 
 def test_cannot_sell_more_than_held(db_session, test_user, test_asset):

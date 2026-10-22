@@ -7,7 +7,8 @@ unrealized and realized profit/loss, and portfolio asset allocation weights.
 from decimal import Decimal
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
-from app.db.models import Holding, Asset, Wallet
+from sqlalchemy import func
+from app.db.models import Holding, Asset, Wallet, Trade
 from app.services.pricing_service import fetch_live_or_simulated_quote
 from app.services.wallet_service import get_user_wallet
 
@@ -85,12 +86,22 @@ def get_portfolio_summary(db: Session, user_id: int) -> Dict[str, Any]:
     )
     total_net_worth = total_portfolio_value + wallet.balance
 
+    # Calculate cumulative realized profit/loss across user's trades
+    realized_query = (
+        db.query(func.coalesce(func.sum(Trade.realized_pnl), Decimal("0.0000")))
+        .filter(Trade.user_id == user_id)
+        .scalar()
+    )
+    total_realized_pnl = Decimal(str(realized_query or "0.0000"))
+
     return {
         "total_portfolio_value": round(total_portfolio_value, 2),
         "total_invested": round(total_invested, 2),
         "total_unrealized_pnl": round(total_unrealized_pnl, 2),
         "total_unrealized_pnl_percent": round(total_pnl_pct, 2),
+        "total_realized_pnl": round(total_realized_pnl, 2),
         "virtual_wallet_balance": round(wallet.balance, 2),
+        "available_balance": round(wallet.balance, 2),
         "total_net_worth": round(total_net_worth, 2),
         "asset_allocation": asset_allocation,
         "holdings": holding_details

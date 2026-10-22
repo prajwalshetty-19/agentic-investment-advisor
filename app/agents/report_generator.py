@@ -29,7 +29,12 @@ def run_report_generator_agent(state: AgentWorkflowState) -> Dict[str, Any]:
     # Build Markdown Content
     md_lines = []
     md_lines.append(f"# {report_title}\n")
-    md_lines.append("> **Disclaimer**: *All investments and portfolios shown are 100% virtual and simulated. This platform does not connect to real financial markets, real brokers, or transfer actual funds. Historical returns are not guarantees of future performance.*\n")
+    md_lines.append(
+        "> **Disclaimer**: *This application provides AI-generated financial research and simulated investment analysis for informational and educational purposes only. "
+        "Recommendations may be incomplete or inaccurate and are not guaranteed to produce returns. Market prices and historical performance may not reflect executable prices. "
+        "All deposits, wallet balances, holdings, and orders in this application are simulated. No real money is transferred and no real trades are executed. "
+        "Verify information independently before making actual investment decisions.*\n"
+    )
     
     # 1. Executive Summary
     md_lines.append("## 1. Executive Summary")
@@ -102,11 +107,22 @@ def run_report_generator_agent(state: AgentWorkflowState) -> Dict[str, Any]:
             md_lines.append(f"- **{rf['risk_type']}** [{rf['severity']}]: {rf['description']}")
         md_lines.append("")
 
-    # 7. Portfolio Impact
+    # 7. Portfolio Impact & Allocation
     if portfolio:
-        md_lines.append("## 7. Portfolio Impact & Allocation")
-        md_lines.append(f"- {portfolio.get('diversification_note', '')}")
-        md_lines.append(f"- Marginal Allocation Weight: **{portfolio.get('marginal_allocation_percent', 0)}%** of virtual net worth.")
+        md_lines.append("## 7. Portfolio Impact & Context Analysis")
+        md_lines.append(f"- **Diversification Assessment**: {portfolio.get('diversification_note', '')}")
+        md_lines.append(f"- **Marginal Impact**: Represents **{portfolio.get('marginal_allocation_percent', 0)}%** of your total portfolio.")
+        if "total_realized_pnl" in portfolio:
+            md_lines.append(f"- **Portfolio Performance**: Cumulative Realized P&L: **₹{portfolio.get('total_realized_pnl', 0):+,.2f}** | Unrealized P&L: **₹{portfolio.get('total_unrealized_pnl', 0):+,.2f}**")
+        
+        benchmarks = portfolio.get("competitor_benchmarks", [])
+        if benchmarks:
+            md_lines.append("\n### Alternative & Benchmark Comparison")
+            md_lines.append("| Benchmark / Peer | Category | Historical Return / Yield | Comparison Insights |")
+            md_lines.append("| :--- | :--- | :--- | :--- |")
+            for b in benchmarks:
+                ret_str = f"{b.get('cagr_3y', 0)}% 3Y CAGR" if "cagr_3y" in b else b.get("coupon_yield", "N/A")
+                md_lines.append(f"| **{b['instrument']}** | {b['category']} | {ret_str} | {b['comparison']} |")
         md_lines.append("")
 
     # 8. Verification Audit Summary

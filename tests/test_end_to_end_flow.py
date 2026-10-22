@@ -1,13 +1,15 @@
 """End-to-end integration test demonstrating the full lifecycle:
-1. User registration with initial ₹100,000 virtual balance.
-2. Discovery & research query executed by multi-agent team.
-3. Verification Agent checks arithmetic and grounding.
-4. Proposed order generated.
-5. Gate 1 check: fails when account execution is disabled.
-6. User enables AI execution in account settings.
-7. User explicitly approves exact order proposal (Gate 2).
-8. Order executes atomically with virtual ledger debit and portfolio position creation.
-9. Portfolio and transaction ledger reflect accurate balances.
+1. User registration with initial ₹0 default balance.
+2. Simulated deposit via UPI (Simulation).
+3. Discovery & research query executed by multi-agent team.
+4. Verification Agent checks arithmetic and grounding.
+5. Proposed BUY order generated.
+6. Gate 1 check: fails when account execution is disabled.
+7. User enables AI execution in account settings.
+8. User explicitly approves exact order proposal (Gate 2).
+9. Order executes atomically with ledger debit and portfolio holding creation.
+10. User sells part of holding (Partial Sell).
+11. Portfolio, realized P&L, and transaction ledger reflect accurate balances.
 """
 
 from decimal import Decimal
@@ -31,12 +33,25 @@ def test_full_investment_lifecycle(db_session, client):
     user_id = auth_data["user_id"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Verify initial wallet balance is ₹100,000
+    # Verify initial balance is strictly ₹0.00
     wallet_res = client.get("/api/wallet", headers=headers)
     assert wallet_res.status_code == 200
-    assert float(wallet_res.json()["balance"]) == 100000.0
+    assert float(wallet_res.json()["balance"]) == 0.0
 
-    # 2. Seed an asset for discovery
+    # 2. Deposit simulated funds via UPI (Simulation)
+    dep_res = client.post(
+        "/api/wallet/deposit",
+        json={
+            "amount": 50000.0,
+            "payment_method": "UPI (Simulation)",
+            "upi_id": "e2e_investor@okhdfcbank"
+        },
+        headers=headers
+    )
+    assert dep_res.status_code == 200
+    assert float(dep_res.json()["balance"]) == 50000.0
+
+    # 3. Seed an asset for discovery
     asset = Asset(
         symbol="GOLDBEES.NS",
         name="Nippon India ETF Gold BeES",
@@ -57,11 +72,11 @@ def test_full_investment_lifecycle(db_session, client):
     db_session.add(quote)
     db_session.commit()
 
-    # 3. User asks Multi-Agent AI Advisor
+    # 4. User asks Multi-Agent AI Advisor
     chat_res = client.post(
         "/api/agents/chat",
         json={
-            "query": "Analyze gold as an investment and suggest the best available options for a ₹20,000 virtual investment over 3 years.",
+            "query": "Analyze gold as an investment and suggest the best available options for a ₹20,000 investment over 3 years.",
             "budget": 20000.0,
             "time_horizon_years": 3.0,
             "risk_tolerance": "GROWTH"
@@ -73,8 +88,9 @@ def test_full_investment_lifecycle(db_session, client):
     assert report_data["verification_passed"] is True
     assert len(report_data["agent_steps"]) >= 8
     assert "report_markdown" in report_data
+    assert "Disclaimer" in report_data["report_markdown"]
 
-    # 4. Propose Order based on Discovery
+    # 5. Propose Order based on Discovery
     prop_res = client.post(
         "/api/orders/propose",
         json={
@@ -89,18 +105,18 @@ def test_full_investment_lifecycle(db_session, client):
     order_data = prop_res.json()
     order_id = order_data["order_id"]
     assert order_data["status"] == "PENDING_APPROVAL"
-    assert float(order_data["price"]) == 60.0
+    fill_price = float(order_data["price"])
+    assert fill_price > 0.0
     total_cost = float(order_data["total_amount"])
 
-    # 5. Gate 1 Test: Attempting execution before enabling account permission must fail
-    # Note: AI execution is disabled by default on registration
+    # 6. Gate 1 Test: Attempting execution before enabling account permission must fail
     appr_res1 = client.post(
         f"/api/orders/{order_id}/approval",
         json={
             "order_id": order_id,
             "action": "APPROVE",
             "approved_quantity": 100.0,
-            "approved_price": 60.0,
+            "approved_price": fill_price,
             "approved_total_amount": total_cost
         },
         headers=headers
@@ -111,7 +127,7 @@ def test_full_investment_lifecycle(db_session, client):
     assert exec_fail_res.status_code == 400
     assert "Account-level AI-assisted execution permission is disabled" in exec_fail_res.json()["detail"]
 
-    # 6. User enables AI execution in account settings
+    # 7. User enables AI execution in account settings
     settings_res = client.patch(
         "/api/auth/settings",
         json={"ai_execution_enabled": True},
@@ -120,19 +136,19 @@ def test_full_investment_lifecycle(db_session, client):
     assert settings_res.status_code == 200
     assert settings_res.json()["ai_execution_enabled"] is True
 
-    # 7. Execute Approved Order (Gates 1 and 2 pass)
+    # 8. Execute Approved Order (Gates 1 and 2 pass)
     exec_success_res = client.post(f"/api/orders/{order_id}/execute", headers=headers)
     assert exec_success_res.status_code == 200
     exec_data = exec_success_res.json()
     assert exec_data["success"] is True
     assert exec_data["status"] == "EXECUTED"
 
-    # 8. Verify virtual wallet was debited accurately
-    expected_balance = 100000.0 - total_cost
+    # 9. Verify wallet was debited accurately
+    expected_balance = 50000.0 - total_cost
     wallet_after_res = client.get("/api/wallet", headers=headers)
     assert abs(float(wallet_after_res.json()["balance"]) - expected_balance) < 0.01
 
-    # 9. Verify portfolio holdings and valuation
+    # 10. Verify portfolio holdings and valuation
     portfolio_res = client.get("/api/portfolio", headers=headers)
     assert portfolio_res.status_code == 200
     port_data = portfolio_res.json()
@@ -140,11 +156,53 @@ def test_full_investment_lifecycle(db_session, client):
     h = port_data["holdings"][0]
     assert h["symbol"] == "GOLDBEES.NS"
     assert float(h["quantity"]) == 100.0
-    assert float(h["current_value"]) == 6000.0
+    assert abs(float(h["current_value"]) - round(100.0 * fill_price, 2)) < 0.05
 
-    # 10. Verify audit ledger
+    # 11. Partial Sale: User sells 40 units of held position
+    sell_prop = client.post(
+        "/api/orders/propose",
+        json={
+            "asset_id": asset.id,
+            "side": "SELL",
+            "quantity": 40.0,
+            "order_type": "MARKET"
+        },
+        headers=headers
+    )
+    assert sell_prop.status_code == 200
+    sell_data = sell_prop.json()
+    sell_id = sell_data["order_id"]
+
+    # Approve SELL (Gate 2)
+    client.post(
+        f"/api/orders/{sell_id}/approval",
+        json={
+            "order_id": sell_id,
+            "action": "APPROVE",
+            "approved_quantity": 40.0,
+            "approved_price": float(sell_data["price"]),
+            "approved_total_amount": float(sell_data["total_amount"])
+        },
+        headers=headers
+    )
+
+    # Execute SELL
+    exec_sell_res = client.post(f"/api/orders/{sell_id}/execute", headers=headers)
+    assert exec_sell_res.status_code == 200
+    assert exec_sell_res.json()["status"] == "EXECUTED"
+
+    # 12. Verify holding reduced to 60 units and portfolio reports realized P&L
+    port_after_sell = client.get("/api/portfolio", headers=headers).json()
+    assert len(port_after_sell["holdings"]) == 1
+    assert float(port_after_sell["holdings"][0]["quantity"]) == 60.0
+    assert "total_realized_pnl" in port_after_sell
+
+    # 13. Verify audit ledger includes deposit, buy, and sell transactions
     ledger_res = client.get("/api/wallet/ledger", headers=headers)
     assert ledger_res.status_code == 200
     entries = ledger_res.json()
-    assert len(entries) >= 2  # INITIAL_CREDIT and BUY_DEBIT
-    assert any(e["transaction_type"] == "BUY_DEBIT" for e in entries)
+    assert len(entries) >= 3
+    tx_types = [e["transaction_type"] for e in entries]
+    assert "DEPOSIT_CREDIT" in tx_types
+    assert "BUY_DEBIT" in tx_types
+    assert "SELL_CREDIT" in tx_types

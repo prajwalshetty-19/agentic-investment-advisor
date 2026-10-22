@@ -24,10 +24,11 @@ def initialize_user_wallet(
     db: Session,
     user_id: int,
     initial_balance: Optional[Decimal] = None
-) -> Tuple[Wallet, WalletLedger]:
+) -> Tuple[Wallet, Optional[WalletLedger]]:
     """
-    Initializes a new virtual wallet for a registered user and writes
-    the initial credit transaction to the append-only ledger.
+    Initializes a new wallet for a registered user.
+    If initial balance > 0, records an INITIAL_CREDIT ledger entry.
+    Otherwise creates wallet with ₹0 balance and an account opening ledger entry.
     """
     balance = initial_balance if initial_balance is not None else Decimal(str(settings.DEFAULT_VIRTUAL_BALANCE))
     
@@ -44,18 +45,53 @@ def initialize_user_wallet(
     db.add(wallet)
     db.flush()
 
+    is_credit = balance > Decimal("0")
     ledger = WalletLedger(
         wallet_id=wallet.id,
         order_id=None,
-        transaction_type="INITIAL_CREDIT",
+        transaction_type="INITIAL_CREDIT" if is_credit else "WALLET_OPENING",
         amount=balance,
         balance_after=balance,
-        description=f"Initial virtual demo funds credited ({settings.DEFAULT_CURRENCY} {balance:,.2f})"
+        description=(
+            f"Initial demo funds credited ({settings.DEFAULT_CURRENCY} {balance:,.2f})"
+            if is_credit
+            else f"Simulated account opened with {settings.DEFAULT_CURRENCY} 0.00 balance"
+        )
     )
     db.add(ledger)
     db.commit()
     db.refresh(wallet)
     return wallet, ledger
+
+
+def deposit_simulated_funds(
+    db: Session,
+    user_id: int,
+    amount: Decimal,
+    payment_method: str = "UPI (Simulation)",
+    upi_id: Optional[str] = None,
+    description: Optional[str] = None
+) -> Tuple[Wallet, WalletLedger]:
+    """
+    Simulates a deposit into the user's wallet via simulated UPI.
+    Strictly simulated: no real money or external payment gateway is contacted.
+    """
+    if amount <= Decimal("0"):
+        raise ValueError("Deposit amount must be strictly positive")
+    if amount > Decimal("10000000"):
+        raise ValueError("Deposit amount exceeds simulated per-transaction limit (₹10,000,000)")
+
+    method_tag = f"[{payment_method}]"
+    vpa_tag = f" VPA: {upi_id}" if upi_id else ""
+    full_desc = description or f"Simulated deposit of {settings.DEFAULT_CURRENCY} {amount:,.2f} via {payment_method}{vpa_tag}"
+
+    return credit_wallet(
+        db=db,
+        user_id=user_id,
+        amount=amount,
+        transaction_type="DEPOSIT_CREDIT",
+        description=full_desc
+    )
 
 
 def get_user_wallet(db: Session, user_id: int) -> Wallet:

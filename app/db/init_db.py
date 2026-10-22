@@ -308,6 +308,19 @@ def init_db(db: Session = None):
     """Initializes tables and seeds initial asset catalog."""
     Base.metadata.create_all(bind=engine)
     
+    # Run lightweight schema migration for SQLite if needed
+    if str(engine.url).startswith("sqlite"):
+        try:
+            with engine.connect() as conn:
+                from sqlalchemy import text
+                res = conn.execute(text("PRAGMA table_info(trades)")).fetchall()
+                col_names = [r[1] for r in res]
+                if "realized_pnl" not in col_names and len(col_names) > 0:
+                    conn.execute(text("ALTER TABLE trades ADD COLUMN realized_pnl NUMERIC(18, 4) DEFAULT 0.0000"))
+                    conn.commit()
+        except Exception:
+            pass
+
     close_db = False
     if db is None:
         db = SessionLocal()

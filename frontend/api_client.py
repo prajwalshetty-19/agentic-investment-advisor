@@ -67,11 +67,26 @@ class ApiClient:
         res.raise_for_status()
         return res.json()
 
-    def deposit_virtual_funds(self, amount: float, description: str = "Virtual Demo Faucet") -> Dict[str, Any]:
+    def deposit_funds(
+        self,
+        amount: float,
+        payment_method: str = "UPI (Simulation)",
+        upi_id: Optional[str] = None,
+        description: Optional[str] = None
+    ) -> Dict[str, Any]:
         url = f"{self.base_url}/api/wallet/deposit"
-        res = requests.post(url, json={"amount": amount, "description": description}, headers=self._get_headers(), timeout=10)
+        payload = {
+            "amount": amount,
+            "payment_method": payment_method,
+            "upi_id": upi_id,
+            "description": description
+        }
+        res = requests.post(url, json=payload, headers=self._get_headers(), timeout=10)
         res.raise_for_status()
         return res.json()
+
+    def deposit_virtual_funds(self, amount: float, description: str = "Simulated UPI Deposit") -> Dict[str, Any]:
+        return self.deposit_funds(amount=amount, description=description)
 
     def get_assets(self, category: Optional[str] = None, search: Optional[str] = None) -> List[Dict[str, Any]]:
         url = f"{self.base_url}/api/assets"

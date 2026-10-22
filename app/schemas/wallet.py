@@ -30,5 +30,8 @@ class LedgerEntryResponse(BaseModel):
 
 
 class VirtualDepositRequest(BaseModel):
-    amount: Decimal = Field(..., gt=0, le=1000000, description="Amount of virtual funds to add")
-    description: Optional[str] = "Virtual Wallet Deposit"
+    amount: Decimal = Field(..., gt=0, le=10000000, description="Amount of simulated funds to deposit")
+    payment_method: str = Field(default="UPI (Simulation)", description="Simulated funding method")
+    upi_id: Optional[str] = Field(default=None, description="Simulated UPI Virtual Payment Address (e.g. user@okhdfcbank)")
+    idempotency_key: Optional[str] = Field(default=None, description="Client idempotency key to prevent double deposits")
+    description: Optional[str] = Field(default=None, description="Optional custom deposit description")

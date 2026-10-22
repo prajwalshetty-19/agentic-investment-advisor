@@ -31,7 +31,9 @@ class PortfolioSummaryResponse(BaseModel):
     total_invested: float
     total_unrealized_pnl: float
     total_unrealized_pnl_percent: float
+    total_realized_pnl: float = 0.0
     virtual_wallet_balance: float
+    available_balance: Optional[float] = None
     total_net_worth: float
     asset_allocation: Dict[str, float]  # e.g., {"STOCK": 45.0, "MUTUAL_FUND": 30.0, "GOLD": 25.0}
     holdings: List[HoldingDetail]

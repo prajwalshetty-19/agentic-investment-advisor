@@ -246,6 +246,11 @@ def execute_approved_order(
                     f"Insufficient holdings to sell {order.quantity} {asset.symbol}. Available: {available}"
                 )
 
+            # Calculate realized profit/loss
+            cost_basis = holding.average_buy_price * order.quantity
+            sale_gross = order.price * order.quantity
+            realized_pnl = sale_gross - cost_basis - order.estimated_fee
+
             # Credit wallet with sale proceeds minus fee
             credit_wallet(
                 db=db,
@@ -260,6 +265,7 @@ def execute_approved_order(
             new_quantity = holding.quantity - order.quantity
             if new_quantity == Decimal("0"):
                 holding.quantity = Decimal("0")
+                holding.average_buy_price = Decimal("0")
                 holding.total_invested = Decimal("0")
             else:
                 cost_of_sold = holding.average_buy_price * order.quantity
@@ -274,6 +280,7 @@ def execute_approved_order(
             executed_quantity=order.quantity,
             executed_price=order.price,
             fee=order.estimated_fee,
+            realized_pnl=realized_pnl if order.side == "SELL" else Decimal("0.0000"),
             executed_at=datetime.now(timezone.utc)
         )
         db.add(trade)

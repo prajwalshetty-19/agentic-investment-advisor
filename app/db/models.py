@@ -52,7 +52,7 @@ class Wallet(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
-    balance = Column(Numeric(18, 4), default=Decimal("100000.0000"), nullable=False)
+    balance = Column(Numeric(18, 4), default=Decimal("0.0000"), nullable=False)
     currency = Column(String(8), default="INR", nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
@@ -253,6 +253,7 @@ class Trade(Base):
     executed_quantity = Column(Numeric(18, 4), nullable=False)
     executed_price = Column(Numeric(18, 4), nullable=False)
     fee = Column(Numeric(18, 4), default=Decimal("0.0000"), nullable=False)
+    realized_pnl = Column(Numeric(18, 4), default=Decimal("0.0000"), nullable=True)
     executed_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
 
     order = relationship("Order", back_populates="trade")

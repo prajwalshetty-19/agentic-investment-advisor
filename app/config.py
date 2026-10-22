@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
     # Virtual Trading Defaults
-    DEFAULT_VIRTUAL_BALANCE: float = 100000.00
+    DEFAULT_VIRTUAL_BALANCE: float = 0.00
     DEFAULT_CURRENCY: str = "INR"
 
     # Database

@@ -47,7 +47,7 @@ def register_user(
     db.add(user_settings)
     db.flush()
 
-    # Initialize virtual wallet with ₹100,000 initial balance and ledger record
+    # Initialize simulated wallet with ₹0 default balance and opening ledger record
     initialize_user_wallet(db, user.id)
 
     db.commit()

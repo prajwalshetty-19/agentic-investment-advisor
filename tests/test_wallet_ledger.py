@@ -52,3 +52,42 @@ def test_overdraw_prevention(db_session, test_user):
         )
     # Balance remains intact
     assert test_user.wallet.balance == Decimal("100000.00")
+
+
+def test_default_zero_wallet_initialization(db_session):
+    from app.db.models import User
+    from app.core.security import get_password_hash
+    user = User(username="zero_user", email="zero@example.com", hashed_password=get_password_hash("pass123"))
+    db_session.add(user)
+    db_session.commit()
+    wallet, ledger = initialize_user_wallet(db_session, user.id)
+    assert wallet.balance == Decimal("0.0000")
+    assert ledger.transaction_type == "WALLET_OPENING"
+    assert ledger.amount == Decimal("0.0000")
+
+
+def test_simulated_upi_deposit(db_session, test_user):
+    from app.services.wallet_service import deposit_simulated_funds
+    wallet, ledger = deposit_simulated_funds(
+        db=db_session,
+        user_id=test_user.id,
+        amount=Decimal("15000.00"),
+        payment_method="UPI (Simulation)",
+        upi_id="user@okhdfcbank"
+    )
+    assert wallet.balance == Decimal("115000.00")
+    assert ledger.amount == Decimal("15000.00")
+    assert ledger.transaction_type == "DEPOSIT_CREDIT"
+    assert "UPI (Simulation)" in ledger.description
+    assert "user@okhdfcbank" in ledger.description
+
+
+def test_invalid_deposits_rejected(db_session, test_user):
+    from app.services.wallet_service import deposit_simulated_funds
+    with pytest.raises(ValueError) as exc:
+        deposit_simulated_funds(db=db_session, user_id=test_user.id, amount=Decimal("0.00"))
+    assert "strictly positive" in str(exc.value)
+
+    with pytest.raises(ValueError) as exc2:
+        deposit_simulated_funds(db=db_session, user_id=test_user.id, amount=Decimal("20000000.00"))
+    assert "limit" in str(exc2.value)
